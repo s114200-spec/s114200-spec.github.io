@@ -1,106 +1,123 @@
-import pygame
-import random
-import sys
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<title>🐄 牛吃草 - HTML 貪吃蛇</title>
+<style>
+    body {
+        background: #222;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+        color: white;
+        font-family: Arial, sans-serif;
+    }
+    canvas {
+        background: #333;
+        border: 4px solid #666;
+    }
+</style>
+</head>
+<body>
 
-# 初始化
-pygame.init()
+<canvas id="game" width="600" height="600"></canvas>
 
-# 遊戲設定
-WIDTH, HEIGHT = 600, 600
-CELL = 30
-GRID_WIDTH = WIDTH // CELL
-GRID_HEIGHT = HEIGHT // CELL
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
 
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("🐄 牛吃草 — 貪吃蛇遊戲")
+const CELL = 30;
+const GRID_W = canvas.width / CELL;
+const GRID_H = canvas.height / CELL;
 
-clock = pygame.time.Clock()
-FONT = pygame.font.SysFont("Arial", 28)
+// 牛（蛇）初始位置
+let cow = [{ x: Math.floor(GRID_W / 2), y: Math.floor(GRID_H / 2) }];
+let direction = { x: 1, y: 0 };
 
-# 牛與草使用 emoji 文字呈現
-def draw_text(text, pos, color=(255, 255, 255)):
-    surf = FONT.render(text, True, color)
-    screen.blit(surf, pos)
-
-# 方向向量
-directions = {
-    "UP": (0, -1),
-    "DOWN": (0, 1),
-    "LEFT": (-1, 0),
-    "RIGHT": (1, 0),
+// 草（食物）產生
+function spawnGrass() {
+    let pos;
+    do {
+        pos = {
+            x: Math.floor(Math.random() * GRID_W),
+            y: Math.floor(Math.random() * GRID_H)
+        };
+    } while (cow.some(seg => seg.x === pos.x && seg.y === pos.y));
+    return pos;
 }
 
-# 初始化牛
-cow = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
-direction = "RIGHT"
+let grass = spawnGrass();
 
-# 產生草
-def spawn_grass():
-    while True:
-        p = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
-        if p not in cow:
-            return p
+// 方向鍵控制
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowUp" && direction.y !== 1) direction = { x: 0, y: -1 };
+    if (e.key === "ArrowDown" && direction.y !== -1) direction = { x: 0, y: 1 };
+    if (e.key === "ArrowLeft" && direction.x !== 1) direction = { x: -1, y: 0 };
+    if (e.key === "ArrowRight" && direction.x !== -1) direction = { x: 1, y: 0 };
+});
 
-grass = spawn_grass()
+// 畫 emoji
+function drawEmoji(emoji, x, y) {
+    ctx.font = "26px Arial";
+    ctx.fillText(emoji, x * CELL + 3, y * CELL + 26);
+}
 
-# 遊戲主迴圈
-while True:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
+// 遊戲主迴圈
+function gameLoop() {
+    // 移動牛
+    let head = {
+        x: cow[0].x + direction.x,
+        y: cow[0].y + direction.y
+    };
 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_UP and direction != "DOWN":
-                direction = "UP"
-            elif event.key == pygame.K_DOWN and direction != "UP":
-                direction = "DOWN"
-            elif event.key == pygame.K_LEFT and direction != "RIGHT":
-                direction = "LEFT"
-            elif event.key == pygame.K_RIGHT and direction != "LEFT":
-                direction = "RIGHT"
+    // 撞牆
+    if (head.x < 0 || head.x >= GRID_W || head.y < 0 || head.y >= GRID_H) {
+        return gameOver();
+    }
 
-    # 牛移動
-    dx, dy = directions[direction]
-    head = (cow[0][0] + dx, cow[0][1] + dy)
+    // 撞到自己
+    if (cow.some(seg => seg.x === head.x && seg.y === head.y)) {
+        return gameOver();
+    }
 
-    # 撞牆
-    if not (0 <= head[0] < GRID_WIDTH and 0 <= head[1] < GRID_HEIGHT):
-        break
+    cow.unshift(head);
 
-    # 撞到自己
-    if head in cow:
-        break
+    // 吃草
+    if (head.x === grass.x && head.y === grass.y) {
+        grass = spawnGrass();
+    } else {
+        cow.pop();
+    }
 
-    cow.insert(0, head)
+    // 畫面
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    # 吃草
-    if head == grass:
-        grass = spawn_grass()
-    else:
-        cow.pop()
+    // 畫草
+    drawEmoji("🌱", grass.x, grass.y);
 
-    # 畫面更新
-    screen.fill((30, 30, 30))
+    // 畫牛身體
+    for (let i = 1; i < cow.length; i++) {
+        drawEmoji("🟫", cow[i].x, cow[i].y);
+    }
 
-    # 畫草
-    draw_text("🌱", (grass[0] * CELL + 5, grass[1] * CELL + 3))
+    // 畫牛頭
+    drawEmoji("🐄", cow[0].x, cow[0].y);
 
-    # 畫牛身體
-    for segment in cow[1:]:
-        draw_text("🟫", (segment[0] * CELL + 8, segment[1] * CELL + 5))
+    setTimeout(gameLoop, 120);
+}
 
-    # 畫牛頭
-    draw_text("🐄", (cow[0][0] * CELL, cow[0][1] * CELL))
+function gameOver() {
+    ctx.fillStyle = "white";
+    ctx.font = "40px Arial";
+    ctx.fillText("💀 牛撞到了！遊戲結束", 120, 280);
+    ctx.font = "30px Arial";
+    ctx.fillText("得分：" + (cow.length - 1), 230, 330);
+}
 
-    pygame.display.flip()
-    clock.tick(8)  # 遊戲速度
+gameLoop();
+</script>
 
-# 遊戲結束畫面
-screen.fill((0, 0, 0))
-draw_text("💀 牛撞到了！遊戲結束！", (120, 250))
-draw_text(f"得分：{len(cow) - 1}", (250, 300))
-pygame.display.flip()
-pygame.time.wait(3000)
-
-pygame.quit()
+</body>
+</html>
