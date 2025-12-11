@@ -1,0 +1,106 @@
+import pygame
+import random
+import sys
+
+# 初始化
+pygame.init()
+
+# 遊戲設定
+WIDTH, HEIGHT = 600, 600
+CELL = 30
+GRID_WIDTH = WIDTH // CELL
+GRID_HEIGHT = HEIGHT // CELL
+
+screen = pygame.display.set_mode((WIDTH, HEIGHT))
+pygame.display.set_caption("🐄 牛吃草 — 貪吃蛇遊戲")
+
+clock = pygame.time.Clock()
+FONT = pygame.font.SysFont("Arial", 28)
+
+# 牛與草使用 emoji 文字呈現
+def draw_text(text, pos, color=(255, 255, 255)):
+    surf = FONT.render(text, True, color)
+    screen.blit(surf, pos)
+
+# 方向向量
+directions = {
+    "UP": (0, -1),
+    "DOWN": (0, 1),
+    "LEFT": (-1, 0),
+    "RIGHT": (1, 0),
+}
+
+# 初始化牛
+cow = [(GRID_WIDTH // 2, GRID_HEIGHT // 2)]
+direction = "RIGHT"
+
+# 產生草
+def spawn_grass():
+    while True:
+        p = (random.randint(0, GRID_WIDTH - 1), random.randint(0, GRID_HEIGHT - 1))
+        if p not in cow:
+            return p
+
+grass = spawn_grass()
+
+# 遊戲主迴圈
+while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+
+        if event.type == pygame.KEYDOWN:
+            if event.key == pygame.K_UP and direction != "DOWN":
+                direction = "UP"
+            elif event.key == pygame.K_DOWN and direction != "UP":
+                direction = "DOWN"
+            elif event.key == pygame.K_LEFT and direction != "RIGHT":
+                direction = "LEFT"
+            elif event.key == pygame.K_RIGHT and direction != "LEFT":
+                direction = "RIGHT"
+
+    # 牛移動
+    dx, dy = directions[direction]
+    head = (cow[0][0] + dx, cow[0][1] + dy)
+
+    # 撞牆
+    if not (0 <= head[0] < GRID_WIDTH and 0 <= head[1] < GRID_HEIGHT):
+        break
+
+    # 撞到自己
+    if head in cow:
+        break
+
+    cow.insert(0, head)
+
+    # 吃草
+    if head == grass:
+        grass = spawn_grass()
+    else:
+        cow.pop()
+
+    # 畫面更新
+    screen.fill((30, 30, 30))
+
+    # 畫草
+    draw_text("🌱", (grass[0] * CELL + 5, grass[1] * CELL + 3))
+
+    # 畫牛身體
+    for segment in cow[1:]:
+        draw_text("🟫", (segment[0] * CELL + 8, segment[1] * CELL + 5))
+
+    # 畫牛頭
+    draw_text("🐄", (cow[0][0] * CELL, cow[0][1] * CELL))
+
+    pygame.display.flip()
+    clock.tick(8)  # 遊戲速度
+
+# 遊戲結束畫面
+screen.fill((0, 0, 0))
+draw_text("💀 牛撞到了！遊戲結束！", (120, 250))
+draw_text(f"得分：{len(cow) - 1}", (250, 300))
+pygame.display.flip()
+pygame.time.wait(3000)
+
+pygame.quit()
